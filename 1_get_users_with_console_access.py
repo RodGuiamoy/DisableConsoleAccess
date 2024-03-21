@@ -20,7 +20,7 @@ def get_users_with_console_access(excluded_emails):
                 
                 # Login profile exists, now check if the user has an 'email' tag and if it's in the excluded list
                 tags_response = iam.list_user_tags(UserName=user_name)
-                user_tags = {tag['Key']: tag['Value'] for tag in tags_response['Tags']}
+                user_tags = {tag['Key']: tag['Value'].lower() for tag in tags_response['Tags']}  # Convert tag values to lowercase
                 user_email = user_tags.get('email', None)  # Default to None if 'email' tag doesn't exist
                 
                 if not user_email or (user_email and user_email not in excluded_emails):
