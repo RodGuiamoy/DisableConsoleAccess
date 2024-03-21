@@ -27,9 +27,11 @@ def get_users_with_console_access(excluded_emails):
                     # Include user if no email tag exists or if their email is not in the excluded list
                     users_with_access.append(user_name)
             except ClientError as error:
+                # Log the exception and move on
+                pass
                 # Ignore errors related to missing login profile, as we only want users with console access
-                if error.response['Error']['Code'] != 'NoSuchEntity':
-                    print(f"Error processing user {user_name}: {error}")
+                # if error.response['Error']['Code'] != 'NoSuchEntity':
+                #     print(f"Error processing user {user_name}: {error}")
 
     return ','.join(users_with_access)
 
