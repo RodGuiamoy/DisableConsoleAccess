@@ -1,15 +1,30 @@
 import boto3
 from botocore.exceptions import ClientError
-import sys
+import argparse
 
 # Initialize a Boto3 IAM client
 iam = boto3.client('iam')
 
-def get_users_with_console_access(excluded_emails):
-    excluded_emails = excluded_emails.split(',')  # Split the string into a list of email addresses
-    users_with_access = []  # This list will hold the usernames of users with console access
+def parseArguments():
+    # Create argument parser
+    parser = argparse.ArgumentParser()
 
-    # Paginator to handle the case where there are more users than can be returned in a single AWS API call
+    # Positional mandatory arguments
+    parser.add_argument('--excluded_emails', dest='excluded_emails', nargs='?', default='', help='Excluded emails')
+    parser.add_argument('--excluded_users', dest='excluded_users', nargs='?', default='', help='Excluded usernames')
+    
+    # Parse arguments
+    args = parser.parse_args()
+
+    return args
+
+def get_users_with_console_access(excluded_emails, excluded_usernames):
+    # Initialize to empty lists regardless of input
+    excluded_emails = excluded_emails.split(',') if excluded_emails else []
+    excluded_usernames = excluded_usernames.split(',') if excluded_usernames else []
+    users_with_access = []  # This list will hold the usernames of users with console access
+    
+    # Assuming iam is a configured AWS IAM client
     paginator = iam.get_paginator('list_users')
     for response in paginator.paginate():
         for user in response['Users']:
@@ -23,24 +38,18 @@ def get_users_with_console_access(excluded_emails):
                 user_tags = {tag['Key']: tag['Value'].lower() for tag in tags_response['Tags']}  # Convert tag values to lowercase
                 user_email = user_tags.get('email', None)  # Default to None if 'email' tag doesn't exist
                 
-                if not user_email or (user_email and user_email not in excluded_emails):
-                    # Include user if no email tag exists or if their email is not in the excluded list
+                # Check if the user's email or username is in the excluded lists
+                if (not user_email or user_email not in excluded_emails) and user_name not in excluded_usernames:
                     users_with_access.append(user_name)
             except ClientError as error:
                 # Log the exception and move on
                 pass
-                # Ignore errors related to missing login profile, as we only want users with console access
-                # if error.response['Error']['Code'] != 'NoSuchEntity':
-                #     print(f"Error processing user {user_name}: {error}")
 
     return ','.join(users_with_access)
 
-try:
-    # Attempt to retrieve excluded users from the command line argument
-    excluded_emails = sys.argv[1]
-except IndexError:
-    # No argument provided, so no excluded users
-    excluded_emails = ""
 
-users_with_console_access_str = get_users_with_console_access(excluded_emails)
+# Parse the arguments
+args = parseArguments()
+
+users_with_console_access_str = get_users_with_console_access(args.excluded_emails, args.excluded_users)
 print(users_with_console_access_str)
